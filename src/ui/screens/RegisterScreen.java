@@ -73,14 +73,19 @@ public class RegisterScreen extends JFrame {
         String email = emailField.getText();
         String password = new String(passwordField.getPassword());
 
-        AuthResult result = authService.register(name, email, password);
-        if (result.isSuccess()) {
-            JOptionPane.showMessageDialog(this, result.getMessage(), "Success", JOptionPane.INFORMATION_MESSAGE);
-            dispose();
-            onRegisterSuccess.run();
-            return;
+        try {
+            AuthResult result = authService.register(name, email, password);
+            if (result.isSuccess()) {
+                JOptionPane.showMessageDialog(this, "Registration successful", "Success", JOptionPane.INFORMATION_MESSAGE);
+                dispose();
+                onRegisterSuccess.run();
+            } else {
+                JOptionPane.showMessageDialog(this, result.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Unexpected error during registration: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "An unexpected error occurred: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-
-        JOptionPane.showMessageDialog(this, result.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
     }
 }

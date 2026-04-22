@@ -9,6 +9,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import models.User;
 
 public class UserRepository {
@@ -65,12 +66,30 @@ public class UserRepository {
         }
     }
 
+    public boolean createUser(String name, String email, String passwordHash) {
+        final String sql = "INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)";
+        try {
+            executeUpdate(sql, statement -> {
+                statement.setObject(1, UUID.randomUUID(), Types.OTHER);
+                statement.setString(2, name);
+                statement.setString(3, email.trim().toLowerCase());
+                statement.setString(4, passwordHash);
+                statement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+            });
+            return true;
+        } catch (SQLException ex) {
+            System.out.println("[ERROR] Insert failed: " + ex.getMessage());
+            ex.printStackTrace();
+            return false;
+        }
+    }
+
     public void save(User user) throws SQLException {
         final String sql = "INSERT INTO users (id, full_name, email, password_hash, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)";
 
         try {
             executeUpdate(sql, statement -> {
-                statement.setObject(1, user.getId(), Types.OTHER);
+                statement.setObject(1, UUID.fromString(user.getId()), Types.OTHER);
                 statement.setString(2, user.getFullName());
                 statement.setString(3, normalizeEmail(user.getEmail()));
                 statement.setString(4, user.getPasswordHash());
@@ -82,29 +101,42 @@ public class UserRepository {
         }
     }
 
-    public Optional<User> findByEmail(String email) throws SQLException {
-        final String sql = "SELECT id, full_name, email, password_hash, is_active, created_at FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1";
-        String normalizedEmail = normalizeEmail(email);
+    public User findByEmail(String email) throws SQLException {
+        email = email.trim().toLowerCase();
+        final String sql = "SELECT * FROM users WHERE email = ?";
 
         Connection connection = null;
         try {
             connection = connectionPool.acquireConnection();
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, normalizedEmail);
+                statement.setString(1, email);
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (!resultSet.next()) {
-                        return Optional.empty();
+                        return null;
                     }
 
                     String id = resultSet.getString("id");
-                    String fullName = resultSet.getString("full_name");
+                    String fullName = "";
+                    try {
+                        fullName = resultSet.getString("name");
+                    } catch (SQLException e) {
+                        try {
+                            fullName = resultSet.getString("full_name");
+                        } catch (SQLException ignored) {}
+                    }
+                    
                     String storedEmail = resultSet.getString("email");
                     String passwordHash = resultSet.getString("password_hash");
-                    boolean isActive = resultSet.getBoolean("is_active");
+                    
+                    boolean isActive = true;
+                    try {
+                        isActive = resultSet.getBoolean("is_active");
+                    } catch (SQLException ignored) {}
+                    
                     Timestamp createdAtTimestamp = resultSet.getTimestamp("created_at");
                     Instant createdAt = createdAtTimestamp != null ? createdAtTimestamp.toInstant() : Instant.now();
 
-                    return Optional.of(new User(id, fullName, storedEmail, passwordHash, isActive, createdAt));
+                    return new User(id, fullName, storedEmail, passwordHash, isActive, createdAt);
                 }
             }
         } catch (SQLException ex) {

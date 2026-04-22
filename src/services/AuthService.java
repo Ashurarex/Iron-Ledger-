@@ -55,41 +55,52 @@ public class AuthService {
                 return new AuthResult(false, "Email already registered.");
             }
 
-            int effectiveCost = Math.max(10, Math.min(12, BCRYPT_COST));
-            String hashedPassword = BCrypt.hashpw(validatedPassword, BCrypt.gensalt(effectiveCost));
-            User user = new User(UUID.randomUUID().toString(), sanitizedName, normalizedEmail, hashedPassword, true, Instant.now());
-            userRepository.save(user);
-            return new AuthResult(true, "Registration successful.");
+            String hashedPassword = BCrypt.hashpw(validatedPassword, BCrypt.gensalt(10));
+            System.out.println("[INFO] Registering user: " + normalizedEmail);
+            
+            boolean success = userRepository.createUser(sanitizedName, normalizedEmail, hashedPassword);
+            if (success) {
+                System.out.println("[INFO] User inserted successfully");
+                return new AuthResult(true, "Registration successful.");
+            } else {
+                return new AuthResult(false, "Registration failed.");
+            }
         } catch (SQLException ex) {
             return new AuthResult(false, "Registration failed.");
         }
     }
 
     public AuthResult login(String email, String plainPassword) {
-        String normalizedEmail = normalizeEmail(email);
-        String password = sanitize(plainPassword);
+        email = email.trim().toLowerCase();
+        String password = plainPassword.trim();
 
-        if (normalizedEmail.isEmpty() || password.isEmpty()) {
+        if (email.isEmpty() || password.isEmpty()) {
             return new AuthResult(false, "Email and password are required.");
         }
-        if (!isValidEmail(normalizedEmail)) {
+        if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
             return new AuthResult(false, "Invalid email or password");
         }
 
         try {
-            Optional<User> userOptional = userRepository.findByEmail(normalizedEmail);
-            if (userOptional.isEmpty()) {
+            System.out.println("[DEBUG] Login email: " + email);
+            User user = userRepository.findByEmail(email);
+            System.out.println("[DEBUG] User found: " + (user != null));
+            
+            if (user == null) {
                 System.err.println("[ERROR] Authentication failed: user not found");
                 return new AuthResult(false, "Invalid email or password");
             }
 
-            User user = userOptional.get();
             if (!user.isActive()) {
                 System.err.println("[ERROR] Authentication failed: account inactive");
                 return new AuthResult(false, "Invalid email or password");
             }
 
-            if (!BCrypt.checkpw(password, user.getPasswordHash())) {
+            System.out.println("[DEBUG] Stored hash: " + user.getPasswordHash());
+            boolean passwordMatch = BCrypt.checkpw(password, user.getPasswordHash());
+            System.out.println("[DEBUG] Password match: " + passwordMatch);
+
+            if (!passwordMatch) {
                 System.err.println("[ERROR] Authentication failed: incorrect password");
                 return new AuthResult(false, "Invalid email or password");
             }

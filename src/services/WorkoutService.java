@@ -148,4 +148,8 @@ public class WorkoutService {
             return new ArrayList<>(logs);
         }
     }
+
+    public List<models.Exercise> getAllExercises() {
+        return exerciseRepository.getAllExercises();
+    }
 }
