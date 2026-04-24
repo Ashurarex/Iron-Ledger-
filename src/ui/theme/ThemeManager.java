@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
-
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
@@ -18,7 +17,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JViewport;
-
 import ui.components.MaterialComboBox;
 
 public class ThemeManager {
@@ -100,7 +98,7 @@ public class ThemeManager {
     // ── Fonts ───────────────────────────────────────────────────────────────
     public Font getHeaderFont()   { return Typography.H1;        }
     public Font getTitleFont()    { return Typography.H2;        }
-    public Font getLabelFont()    { return Typography.BODY_BOLD; }
+    public Font getLabelFont()    { return Typography.LABEL; }
     public Font getBodyFont()     { return Typography.BODY;      }
     public Font getSmallFont()    { return Typography.SMALL;     }
     public Font getButtonFont()   { return Typography.BODY_BOLD; }

@@ -17,6 +17,7 @@ public final class Typography {
 
     public static final Font H1 = new Font(FONT_FAMILY, Font.BOLD, 24);
     public static final Font H2 = semiBold(18);
+    public static final Font LABEL = semiBold(14);
     public static final Font BODY = new Font(FONT_FAMILY, Font.PLAIN, 14);
     public static final Font BODY_BOLD = new Font(FONT_FAMILY, Font.BOLD, 14);
     public static final Font SMALL = new Font(FONT_FAMILY, Font.PLAIN, 12);
