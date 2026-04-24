@@ -1,9 +1,7 @@
 package ui.screens;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -19,7 +17,6 @@ import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -31,8 +28,10 @@ import models.Workout;
 import models.Exercise;
 import services.WorkoutService;
 import ui.components.CardPanel;
+import ui.components.MaterialComboBox;
+import ui.components.MaterialTextField;
 import ui.components.PrimaryButton;
-import ui.components.StyledTextField;
+import ui.theme.ThemeManager;
 
 public class WorkoutLoggerScreen extends JFrame {
     private final WorkoutService workoutService;
@@ -42,14 +41,14 @@ public class WorkoutLoggerScreen extends JFrame {
     
     private Map<UUID, List<SetEntry>> workoutData;
 
-    private StyledTextField nameField;
+    private MaterialTextField nameField;
     private PrimaryButton createButton;
 
-    private JComboBox<String> muscleGroupComboBox;
-    private JComboBox<String> exerciseComboBox;
-    private StyledTextField setNumberField;
-    private StyledTextField repsField;
-    private StyledTextField weightField;
+    private MaterialComboBox<String> muscleGroupComboBox;
+    private MaterialComboBox<String> exerciseComboBox;
+    private MaterialTextField setNumberField;
+    private MaterialTextField repsField;
+    private MaterialTextField weightField;
     private PrimaryButton addLogButton;
     private PrimaryButton finishButton;
     private JTextArea exerciseListArea;
@@ -63,10 +62,11 @@ public class WorkoutLoggerScreen extends JFrame {
     }
 
     private void initialize() {
+        ThemeManager tm = ThemeManager.getInstance();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(550, 750);
         setLocationRelativeTo(null);
-        getContentPane().setBackground(new Color(245, 247, 250)); // #F5F7FA
+        getContentPane().setBackground(tm.getBackground());
         setLayout(new BorderLayout());
 
         JPanel mainPanel = new JPanel();
@@ -76,8 +76,8 @@ public class WorkoutLoggerScreen extends JFrame {
 
         // A. Header
         JLabel headerLabel = new JLabel("Log Workout");
-        headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        headerLabel.setForeground(new Color(30, 30, 30));
+        headerLabel.setFont(tm.getHeaderFont());
+        headerLabel.setForeground(tm.getTextPrimary());
         headerLabel.setAlignmentX(CENTER_ALIGNMENT);
         mainPanel.add(headerLabel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 20)));
@@ -88,14 +88,11 @@ public class WorkoutLoggerScreen extends JFrame {
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         
-        gbc.gridx = 0; gbc.gridy = 0;
-        setupCard.add(createLabel("Workout Name:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        nameField = new StyledTextField();
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        nameField = new MaterialTextField("Workout Name");
         setupCard.add(nameField, gbc);
 
-        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.EAST;
         createButton = new PrimaryButton("Create Workout");
         createButton.addActionListener(e -> handleCreateWorkout());
         setupCard.add(createButton, gbc);
@@ -113,38 +110,29 @@ public class WorkoutLoggerScreen extends JFrame {
         builderCard.add(createLabel("Muscle Group:"), gbc);
         
         gbc.gridx = 1; gbc.weightx = 0.7;
-        muscleGroupComboBox = new JComboBox<>();
+        muscleGroupComboBox = new MaterialComboBox<>();
         builderCard.add(muscleGroupComboBox, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.3;
         builderCard.add(createLabel("Exercise:"), gbc);
         
         gbc.gridx = 1; gbc.weightx = 0.7;
-        exerciseComboBox = new JComboBox<>();
+        exerciseComboBox = new MaterialComboBox<>();
         builderCard.add(exerciseComboBox, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3;
-        builderCard.add(createLabel("Set Number:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        setNumberField = new StyledTextField();
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        setNumberField = new MaterialTextField("Set Number");
         builderCard.add(setNumberField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3;
-        builderCard.add(createLabel("Reps:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        repsField = new StyledTextField();
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        repsField = new MaterialTextField("Reps");
         builderCard.add(repsField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.3;
-        builderCard.add(createLabel("Weight:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        weightField = new StyledTextField();
+        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        weightField = new MaterialTextField("Weight (kg)");
         builderCard.add(weightField, gbc);
 
-        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.EAST;
         addLogButton = new PrimaryButton("Add Set");
         addLogButton.addActionListener(e -> handleAddSet());
         builderCard.add(addLogButton, gbc);
@@ -183,10 +171,12 @@ public class WorkoutLoggerScreen extends JFrame {
         
         exerciseListArea = new JTextArea();
         exerciseListArea.setEditable(false);
-        exerciseListArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        exerciseListArea.setFont(tm.getMonoFont());
+        exerciseListArea.setForeground(tm.getInputText());
+        exerciseListArea.setBackground(tm.getPreviewBg());
         JScrollPane scrollPane = new JScrollPane(exerciseListArea);
         scrollPane.setPreferredSize(new Dimension(450, 150));
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(209, 213, 219))); // #D1D5DB
+        scrollPane.setBorder(BorderFactory.createLineBorder(tm.getCardBorder()));
         previewCard.add(scrollPane, BorderLayout.CENTER);
         
         mainPanel.add(previewCard);
@@ -211,9 +201,10 @@ public class WorkoutLoggerScreen extends JFrame {
     }
 
     private JLabel createLabel(String text) {
+        ThemeManager tm = ThemeManager.getInstance();
         JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        label.setForeground(new Color(55, 65, 81)); // #374151
+        label.setFont(tm.getLabelFont());
+        label.setForeground(tm.getLabelColor());
         return label;
     }
 

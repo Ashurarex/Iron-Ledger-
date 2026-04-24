@@ -1,6 +1,9 @@
 package ui.panels;
 
+import ui.animation.Animator;
+
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -29,8 +32,9 @@ import models.Workout;
 import services.WorkoutService;
 import ui.components.CardPanel;
 import ui.components.FeedbackBar;
+import ui.components.MaterialComboBox;
+import ui.components.MaterialTextField;
 import ui.components.PrimaryButton;
-import ui.components.StyledTextField;
 import ui.theme.ThemeManager;
 
 public class WorkoutLoggerPanel extends JPanel {
@@ -44,17 +48,20 @@ public class WorkoutLoggerPanel extends JPanel {
     private long lastSaveTime = 0;
 
     private FeedbackBar feedbackBar;
-    private StyledTextField nameField;
+    private MaterialTextField nameField;
     private PrimaryButton createButton;
-    private JComboBox<String> muscleGroupComboBox;
-    private JComboBox<String> exerciseComboBox;
-    private StyledTextField setNumberField;
-    private StyledTextField repsField;
-    private StyledTextField weightField;
+    private MaterialComboBox<String> muscleGroupComboBox;
+    private MaterialComboBox<String> exerciseComboBox;
+    private MaterialTextField setNumberField;
+    private MaterialTextField repsField;
+    private MaterialTextField weightField;
     private PrimaryButton addSetButton;
     private PrimaryButton saveButton;
     private JTextArea previewArea;
     private JLabel statusLabel;
+    private Animator statusAnimator;
+    private float statusPulse = 0f;
+    private boolean statusPulseForward = true;
 
     public WorkoutLoggerPanel() {
         this.workoutService = new WorkoutService();
@@ -104,12 +111,10 @@ public class WorkoutLoggerPanel extends JPanel {
         g.insets = new Insets(8, 8, 8, 8);
         g.fill = GridBagConstraints.HORIZONTAL;
 
-        g.gridx = 0; g.gridy = 0; g.weightx = 0;
-        setupCard.add(createLabel("Workout Name"), g);
-        g.gridx = 1; g.weightx = 1.0;
-        nameField = new StyledTextField();
+        g.gridx = 0; g.gridy = 0; g.weightx = 1.0; g.gridwidth = 2;
+        nameField = new MaterialTextField("Workout Name");
         setupCard.add(nameField, g);
-        g.gridx = 2; g.weightx = 0;
+        g.gridx = 2; g.weightx = 0; g.gridwidth = 1;
         createButton = new PrimaryButton("Create");
         createButton.addActionListener(e -> handleCreateWorkout());
         setupCard.add(createButton, g);
@@ -127,38 +132,30 @@ public class WorkoutLoggerPanel extends JPanel {
         g.gridx = 0; g.gridy = 0; g.weightx = 0;
         builderCard.add(createLabel("Muscle Group"), g);
         g.gridx = 1; g.weightx = 1.0;
-        muscleGroupComboBox = new JComboBox<>();
+        muscleGroupComboBox = new MaterialComboBox<>();
         muscleGroupComboBox.addItem("Select Muscle Group");
-        tm.styleComboBox(muscleGroupComboBox);
         builderCard.add(muscleGroupComboBox, g);
 
         g.gridx = 0; g.gridy = 1; g.weightx = 0;
         builderCard.add(createLabel("Exercise"), g);
         g.gridx = 1; g.weightx = 1.0;
-        exerciseComboBox = new JComboBox<>();
+        exerciseComboBox = new MaterialComboBox<>();
         exerciseComboBox.addItem("Select Exercise");
-        tm.styleComboBox(exerciseComboBox);
         builderCard.add(exerciseComboBox, g);
 
-        g.gridx = 0; g.gridy = 2; g.weightx = 0;
-        builderCard.add(createLabel("Set #"), g);
-        g.gridx = 1; g.weightx = 1.0;
-        setNumberField = new StyledTextField();
+        g.gridx = 0; g.gridy = 2; g.weightx = 1.0; g.gridwidth = 2;
+        setNumberField = new MaterialTextField("Set #");
         builderCard.add(setNumberField, g);
 
-        g.gridx = 0; g.gridy = 3; g.weightx = 0;
-        builderCard.add(createLabel("Reps"), g);
-        g.gridx = 1; g.weightx = 1.0;
-        repsField = new StyledTextField();
+        g.gridx = 0; g.gridy = 3; g.weightx = 1.0; g.gridwidth = 2;
+        repsField = new MaterialTextField("Reps");
         builderCard.add(repsField, g);
 
-        g.gridx = 0; g.gridy = 4; g.weightx = 0;
-        builderCard.add(createLabel("Weight (kg)"), g);
-        g.gridx = 1; g.weightx = 1.0;
-        weightField = new StyledTextField();
+        g.gridx = 0; g.gridy = 4; g.weightx = 1.0; g.gridwidth = 2;
+        weightField = new MaterialTextField("Weight (kg)");
         builderCard.add(weightField, g);
 
-        g.gridx = 1; g.gridy = 5; g.weightx = 0;
+        g.gridx = 1; g.gridy = 5; g.weightx = 0; g.gridwidth = 1;
         addSetButton = new PrimaryButton("Add Set");
         addSetButton.addActionListener(e -> handleAddSet());
         builderCard.add(addSetButton, g);
@@ -208,7 +205,7 @@ public class WorkoutLoggerPanel extends JPanel {
     }
 
     private void loadExercisesAsync() {
-        statusLabel.setText("Loading exercises...");
+        setStatus("Loading exercises...", true);
         new SwingWorker<List<Exercise>, Void>() {
             @Override
             protected List<Exercise> doInBackground() {
@@ -221,11 +218,11 @@ public class WorkoutLoggerPanel extends JPanel {
                     exercisesList = get();
                     System.out.println("[EXERCISE] Loaded: " + exercisesList.size() + " exercises");
                     populateMuscleGroups();
-                    statusLabel.setText("Ready - " + exercisesList.size() + " exercises available");
+                    setStatus("Ready - " + exercisesList.size() + " exercises available", false);
                 } catch (Exception ex) {
                     System.err.println("[EXERCISE] Failed to load: " + ex.getMessage());
                     exercisesList = new ArrayList<>();
-                    statusLabel.setText("Failed to load exercises. Check connection.");
+                    setStatus("Failed to load exercises. Check connection.", false);
                     feedbackBar.showError("Failed to load exercises");
                 }
             }
@@ -488,6 +485,68 @@ public class WorkoutLoggerPanel extends JPanel {
         label.setFont(tm.getLabelFont());
         label.setForeground(tm.getLabelColor());
         return label;
+    }
+
+    @Override
+    public void removeNotify() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        super.removeNotify();
+    }
+
+    private void setStatus(String text, boolean loading) {
+        statusLabel.setText(text);
+        if (loading) {
+            startStatusPulse();
+        } else {
+            stopStatusPulse();
+            statusLabel.setForeground(ThemeManager.getInstance().getTextMuted());
+        }
+    }
+
+    private void startStatusPulse() {
+        float start = statusPulse;
+        float target = statusPulseForward ? 1f : 0f;
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusAnimator = new Animator(760, Animator.EASE_IN_OUT, eased -> {
+            statusPulse = lerp(start, target, eased);
+            statusLabel.setForeground(blend(
+                ThemeManager.getInstance().getTextMuted(),
+                ThemeManager.getInstance().getTextPrimary(),
+                0.25f + (statusPulse * 0.35f)
+            ));
+            statusLabel.repaint();
+        }, () -> {
+            statusPulse = target;
+            statusPulseForward = !statusPulseForward;
+            if (isDisplayable() && statusLabel.getText().startsWith("Loading")) {
+                startStatusPulse();
+            }
+        });
+        statusAnimator.start();
+    }
+
+    private void stopStatusPulse() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusPulse = 0f;
+        statusPulseForward = true;
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    private static Color blend(Color a, Color b, float t) {
+        int red = Math.round(lerp(a.getRed(), b.getRed(), t));
+        int green = Math.round(lerp(a.getGreen(), b.getGreen(), t));
+        int blue = Math.round(lerp(a.getBlue(), b.getBlue(), t));
+        int alpha = Math.round(lerp(a.getAlpha(), b.getAlpha(), t));
+        return new Color(red, green, blue, alpha);
     }
 
     public static class SetEntry {

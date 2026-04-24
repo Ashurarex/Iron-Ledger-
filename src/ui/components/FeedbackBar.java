@@ -1,16 +1,19 @@
 package ui.components;
 
+import ui.animation.Animator;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.AlphaComposite;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
+import ui.theme.Typography;
 
 /**
  * Inline feedback bar that sits at the top of a panel.
@@ -21,7 +24,9 @@ public class FeedbackBar extends JPanel {
 
     private final JLabel messageLabel;
     private Timer hideTimer;
+    private Animator visibilityAnimator;
     private Type currentType = Type.INFO;
+    private float visibilityProgress = 0f;
 
     public FeedbackBar() {
         setLayout(new BorderLayout());
@@ -32,7 +37,7 @@ public class FeedbackBar extends JPanel {
 
         messageLabel = new JLabel("", SwingConstants.LEFT);
         messageLabel.setForeground(Color.WHITE);
-        messageLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        messageLabel.setFont(Typography.BODY_BOLD);
         messageLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
         add(messageLabel, BorderLayout.CENTER);
     }
@@ -42,17 +47,14 @@ public class FeedbackBar extends JPanel {
         messageLabel.setText(message);
         setVisible(true);
         revalidate();
-        repaint();
+        animateVisibility(1f);
 
-        // Cancel any existing timer
         if (hideTimer != null && hideTimer.isRunning()) {
             hideTimer.stop();
         }
 
-        // Auto-hide after 3 seconds
         hideTimer = new Timer(3000, e -> {
-            setVisible(false);
-            revalidate();
+            animateVisibility(0f);
         });
         hideTimer.setRepeats(false);
         hideTimer.start();
@@ -63,8 +65,22 @@ public class FeedbackBar extends JPanel {
     public void showInfo(String message)     { show(message, Type.INFO);    }
 
     @Override
+    public void paint(Graphics g) {
+        if (!isVisible() && visibilityProgress <= 0f) {
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        int offsetY = Math.round((1f - visibilityProgress) * -10f);
+        g2.translate(0, offsetY);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, visibilityProgress)));
+        super.paint(g2);
+        g2.dispose();
+    }
+
+    @Override
     protected void paintComponent(Graphics g) {
-        if (!isVisible()) return;
+        if (visibilityProgress <= 0f) return;
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -77,6 +93,38 @@ public class FeedbackBar extends JPanel {
         g2.setColor(bg);
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
         g2.dispose();
-        super.paintComponent(g);
+    }
+
+    @Override
+    public void removeNotify() {
+        if (hideTimer != null) {
+            hideTimer.stop();
+        }
+        if (visibilityAnimator != null) {
+            visibilityAnimator.stop();
+        }
+        super.removeNotify();
+    }
+
+    private void animateVisibility(float target) {
+        float start = visibilityProgress;
+        if (visibilityAnimator != null) {
+            visibilityAnimator.stop();
+        }
+        visibilityAnimator = new Animator(180, Animator.EASE_OUT_CUBIC, eased -> {
+            visibilityProgress = lerp(start, target, eased);
+            repaint(0, 0, getWidth(), getHeight());
+        }, () -> {
+            visibilityProgress = target;
+            if (target <= 0f) {
+                setVisible(false);
+                revalidate();
+            }
+        });
+        visibilityAnimator.start();
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
     }
 }

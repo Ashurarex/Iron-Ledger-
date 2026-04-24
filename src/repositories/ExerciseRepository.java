@@ -26,7 +26,13 @@ public class ExerciseRepository {
         "SELECT id, name, muscle_group, equipment, difficulty FROM exercises ORDER BY name ASC";
 
     private static final String INSERT_EXERCISE_SQL =
-        "INSERT INTO exercises (id, name, muscle_group, equipment, difficulty) VALUES (?, ?, ?, ?, ?)";
+        """
+        INSERT INTO exercises (id, name, muscle_group, equipment, difficulty)
+        SELECT ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+            SELECT 1 FROM exercises WHERE lower(name) = lower(?)
+        )
+        """;
 
     private final ConnectionPool connectionPool;
 
@@ -36,12 +42,6 @@ public class ExerciseRepository {
 
     public List<Exercise> getAllExercises() {
         ensureTable();
-
-        List<Exercise> exercises = fetchAll();
-        if (!exercises.isEmpty()) {
-            return exercises;
-        }
-
         seedExercises();
         return fetchAll();
     }
@@ -74,10 +74,35 @@ public class ExerciseRepository {
     private void seedExercises() {
         final String[][] seeds = {
             {"Bench Press", "Chest", "Barbell", "Intermediate"},
-            {"Squat", "Legs", "Barbell", "Intermediate"},
+            {"Incline Bench Press", "Chest", "Barbell", "Intermediate"},
+            {"Decline Bench Press", "Chest", "Barbell", "Intermediate"},
+            {"Dumbbell Press", "Chest", "Dumbbell", "Beginner"},
+            {"Chest Fly", "Chest", "Dumbbell", "Beginner"},
+            {"Pushups", "Chest", "Bodyweight", "Beginner"},
+            {"Pull-ups", "Back", "Bodyweight", "Intermediate"},
+            {"Lat Pulldown", "Back", "Cable", "Beginner"},
+            {"Barbell Row", "Back", "Barbell", "Intermediate"},
+            {"Seated Cable Row", "Back", "Cable", "Beginner"},
             {"Deadlift", "Back", "Barbell", "Advanced"},
+            {"Squat", "Legs", "Barbell", "Intermediate"},
+            {"Leg Press", "Legs", "Machine", "Beginner"},
+            {"Lunges", "Legs", "Dumbbell", "Beginner"},
+            {"Leg Curl", "Legs", "Machine", "Beginner"},
+            {"Leg Extension", "Legs", "Machine", "Beginner"},
+            {"Calf Raises", "Legs", "Machine", "Beginner"},
             {"Shoulder Press", "Shoulders", "Dumbbell", "Intermediate"},
-            {"Bicep Curl", "Arms", "Dumbbell", "Beginner"}
+            {"Lateral Raise", "Shoulders", "Dumbbell", "Beginner"},
+            {"Front Raise", "Shoulders", "Dumbbell", "Beginner"},
+            {"Rear Delt Fly", "Shoulders", "Dumbbell", "Beginner"},
+            {"Bicep Curl", "Arms", "Dumbbell", "Beginner"},
+            {"Hammer Curl", "Arms", "Dumbbell", "Beginner"},
+            {"Tricep Pushdown", "Arms", "Cable", "Beginner"},
+            {"Skull Crushers", "Arms", "EZ Bar", "Intermediate"},
+            {"Dips", "Arms", "Bodyweight", "Intermediate"},
+            {"Plank", "Core", "Bodyweight", "Beginner"},
+            {"Crunches", "Core", "Bodyweight", "Beginner"},
+            {"Hanging Leg Raise", "Core", "Bodyweight", "Intermediate"},
+            {"Russian Twist", "Core", "Bodyweight", "Beginner"}
         };
 
         Connection connection = null;
@@ -90,6 +115,7 @@ public class ExerciseRepository {
                     statement.setString(3, seed[1]);
                     statement.setString(4, seed[2]);
                     statement.setString(5, seed[3]);
+                    statement.setString(6, seed[0]);
                     statement.addBatch();
                 }
                 statement.executeBatch();

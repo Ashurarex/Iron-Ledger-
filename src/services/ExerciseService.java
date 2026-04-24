@@ -14,6 +14,7 @@ import repositories.ExerciseRepository;
 
 public class ExerciseService {
     private final ExerciseRepository exerciseRepository;
+    private static List<Exercise> cachedExercises;
     private static final Map<String, ExerciseGuidance> guidanceMap = new HashMap<>();
 
     static {
@@ -63,8 +64,12 @@ public class ExerciseService {
         this.exerciseRepository = new ExerciseRepository(ConnectionPool.getInstance());
     }
 
-    public List<Exercise> getAllExercises() {
-        return exerciseRepository.getAllExercises();
+    public synchronized List<Exercise> getAllExercises() {
+        if (cachedExercises == null) {
+            cachedExercises = exerciseRepository.getAllExercises();
+            System.out.println("[DEBUG] Loaded exercises: " + cachedExercises.size());
+        }
+        return new ArrayList<>(cachedExercises);
     }
 
     public List<Exercise> filterExercises(String muscleGroup, String equipment, String difficulty) {

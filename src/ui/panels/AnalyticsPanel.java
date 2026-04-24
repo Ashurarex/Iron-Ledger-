@@ -1,6 +1,9 @@
 package ui.panels;
 
+import ui.animation.Animator;
+
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -12,7 +15,6 @@ import java.util.UUID;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -25,6 +27,7 @@ import services.SessionManager;
 import services.WorkoutService;
 import ui.components.CardPanel;
 import ui.components.GraphPanel;
+import ui.components.MaterialComboBox;
 import ui.theme.ThemeManager;
 
 public class AnalyticsPanel extends JPanel {
@@ -32,11 +35,14 @@ public class AnalyticsPanel extends JPanel {
     private final WorkoutService workoutService;
     private List<Exercise> exercisesList;
 
-    private JComboBox<String> exerciseCombo;
+    private MaterialComboBox<String> exerciseCombo;
     private GraphPanel progressChart;
     private GraphPanel volumeChart;
     private JTextArea prArea;
     private JLabel statusLabel;
+    private Animator statusAnimator;
+    private float statusPulse = 0f;
+    private boolean statusPulseForward = true;
 
     public AnalyticsPanel() {
         this.analyticsService = new AnalyticsService();
@@ -84,9 +90,8 @@ public class AnalyticsPanel extends JPanel {
         progressHeader.add(progressTitle, g);
 
         g.gridx = 1;
-        exerciseCombo = new JComboBox<>();
+        exerciseCombo = new MaterialComboBox<>();
         exerciseCombo.addItem("Select Exercise");
-        tm.styleComboBox(exerciseCombo);
         exerciseCombo.addActionListener(e -> loadProgressChart());
         progressHeader.add(exerciseCombo, g);
 
@@ -165,7 +170,7 @@ public class AnalyticsPanel extends JPanel {
     }
 
     public void refresh() {
-        statusLabel.setText("Loading analytics...");
+        setStatus("Loading analytics...", true);
 
         new SwingWorker<Void, Void>() {
             @Override
@@ -177,10 +182,10 @@ public class AnalyticsPanel extends JPanel {
                     loadExerciseCombo();
                     loadVolumeChart();
                     loadPRs();
-                    statusLabel.setText("Analytics loaded");
+                    setStatus("Analytics loaded", false);
                 } catch (Exception ex) {
                     System.err.println("[ANALYTICS] Refresh failed: " + ex.getMessage());
-                    statusLabel.setText("Error loading analytics");
+                    setStatus("Error loading analytics", false);
                 }
             }
         }.execute();
@@ -271,5 +276,67 @@ public class AnalyticsPanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    @Override
+    public void removeNotify() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        super.removeNotify();
+    }
+
+    private void setStatus(String text, boolean loading) {
+        statusLabel.setText(text);
+        if (loading) {
+            startStatusPulse();
+        } else {
+            stopStatusPulse();
+            statusLabel.setForeground(ThemeManager.getInstance().getTextMuted());
+        }
+    }
+
+    private void startStatusPulse() {
+        float start = statusPulse;
+        float target = statusPulseForward ? 1f : 0f;
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusAnimator = new Animator(760, Animator.EASE_IN_OUT, eased -> {
+            statusPulse = lerp(start, target, eased);
+            statusLabel.setForeground(blend(
+                ThemeManager.getInstance().getTextMuted(),
+                ThemeManager.getInstance().getTextPrimary(),
+                0.25f + (statusPulse * 0.35f)
+            ));
+            statusLabel.repaint();
+        }, () -> {
+            statusPulse = target;
+            statusPulseForward = !statusPulseForward;
+            if (isDisplayable() && statusLabel.getText().startsWith("Loading")) {
+                startStatusPulse();
+            }
+        });
+        statusAnimator.start();
+    }
+
+    private void stopStatusPulse() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusPulse = 0f;
+        statusPulseForward = true;
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    private static Color blend(Color a, Color b, float t) {
+        int red = Math.round(lerp(a.getRed(), b.getRed(), t));
+        int green = Math.round(lerp(a.getGreen(), b.getGreen(), t));
+        int blue = Math.round(lerp(a.getBlue(), b.getBlue(), t));
+        int alpha = Math.round(lerp(a.getAlpha(), b.getAlpha(), t));
+        return new Color(red, green, blue, alpha);
     }
 }

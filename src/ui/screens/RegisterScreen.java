@@ -5,22 +5,21 @@ import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
 import models.AuthResult;
 import services.AuthService;
+import ui.components.MaterialTextField;
+import ui.theme.ThemeManager;
 
 public class RegisterScreen extends JFrame {
     private final AuthService authService;
     private final Runnable onRegisterSuccess;
     private final Runnable onBackToLogin;
 
-    private final JTextField nameField;
-    private final JTextField emailField;
-    private final JPasswordField passwordField;
+    private final MaterialTextField nameField;
+    private final MaterialTextField emailField;
+    private final MaterialTextField passwordField;
 
     public RegisterScreen(AuthService authService, Runnable onRegisterSuccess, Runnable onBackToLogin) {
         super("Iron Ledger - Register");
@@ -28,29 +27,31 @@ public class RegisterScreen extends JFrame {
         this.onRegisterSuccess = onRegisterSuccess;
         this.onBackToLogin = onBackToLogin;
 
-        nameField = new JTextField();
-        emailField = new JTextField();
-        passwordField = new JPasswordField();
+        nameField = new MaterialTextField("Name");
+        emailField = new MaterialTextField("Email");
+        passwordField = new MaterialTextField("Password", true);
 
         initialize();
     }
 
     private void initialize() {
+        ThemeManager tm = ThemeManager.getInstance();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(500, 320);
         setResizable(false);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        JPanel formPanel = new JPanel(new GridLayout(6, 1, 8, 8));
-        formPanel.add(new JLabel("Name"));
+        getContentPane().setBackground(tm.getBackground());
+
+        JPanel formPanel = new JPanel(new GridLayout(3, 1, 8, 8));
+        formPanel.setOpaque(false);
         formPanel.add(nameField);
-        formPanel.add(new JLabel("Email"));
         formPanel.add(emailField);
-        formPanel.add(new JLabel("Password"));
         formPanel.add(passwordField);
 
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        actionPanel.setOpaque(false);
         JButton backButton = new JButton("Back to Login");
         JButton registerButton = new JButton("Register");
 

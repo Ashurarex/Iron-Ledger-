@@ -1,5 +1,8 @@
 package ui;
 
+import ui.animation.Animator;
+
+import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -12,7 +15,10 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.awt.image.BufferedImage;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -20,6 +26,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
@@ -32,16 +39,20 @@ import ui.panels.WorkoutHistoryPanel;
 import ui.panels.WorkoutLoggerPanel;
 import ui.theme.NotificationManager;
 import ui.theme.ThemeManager;
+import ui.theme.Typography;
 
 public class MainFrame extends JFrame {
     private CardLayout cardLayout;
     private JPanel contentPanel;
+    private JLayeredPane contentHost;
+    private TransitionOverlay transitionOverlay;
     private JPanel sidebarPanel;
     private JPanel navbarPanel;
     private JLabel navTitleLabel;
     private JLabel navUserLabel;
     private JButton themeToggleBtn;
     private final List<SidebarButton> sidebarButtons = new ArrayList<>();
+    private final Map<String, JPanel> routePanels = new LinkedHashMap<>();
     private final String[] routeKeys = {"dashboard", "workout", "history", "analytics", "exercises"};
 
     // Lazy-loaded panels
@@ -83,7 +94,20 @@ public class MainFrame extends JFrame {
         // Content area with CardLayout
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
+        contentPanel.setOpaque(true);
         contentPanel.setBackground(tm.getBackground());
+        transitionOverlay = new TransitionOverlay();
+        contentHost = new JLayeredPane() {
+            @Override
+            public void doLayout() {
+                int width = getWidth();
+                int height = getHeight();
+                contentPanel.setBounds(0, 0, width, height);
+                transitionOverlay.setBounds(0, 0, width, height);
+            }
+        };
+        contentHost.add(contentPanel, JLayeredPane.DEFAULT_LAYER);
+        contentHost.add(transitionOverlay, JLayeredPane.PALETTE_LAYER);
 
         // Dashboard is always loaded; others lazy
         dashboardPanel = new DashboardPanel(
@@ -91,13 +115,13 @@ public class MainFrame extends JFrame {
             () -> navigateTo("history"),
             () -> navigateTo("analytics")
         );
-        contentPanel.add(dashboardPanel, "dashboard");
-        contentPanel.add(createLoadingPanel(), "workout");
-        contentPanel.add(createLoadingPanel(), "history");
-        contentPanel.add(createLoadingPanel(), "analytics");
-        contentPanel.add(createLoadingPanel(), "exercises");
+        registerRoutePanel("dashboard", dashboardPanel);
+        registerRoutePanel("workout", createLoadingPanel());
+        registerRoutePanel("history", createLoadingPanel());
+        registerRoutePanel("analytics", createLoadingPanel());
+        registerRoutePanel("exercises", createLoadingPanel());
 
-        root.add(contentPanel, BorderLayout.CENTER);
+        root.add(contentHost, BorderLayout.CENTER);
         setContentPane(root);
 
         // Theme change listener
@@ -111,7 +135,7 @@ public class MainFrame extends JFrame {
         ThemeManager tm = ThemeManager.getInstance();
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(tm.getBackground());
-        JLabel lbl = new JLabel("Loading...", SwingConstants.CENTER);
+        JLabel lbl = new LoadingLabel("Loading...", tm.getTitleFont());
         lbl.setFont(tm.getTitleFont());
         lbl.setForeground(tm.getTextMuted());
         p.add(lbl, BorderLayout.CENTER);
@@ -141,7 +165,7 @@ public class MainFrame extends JFrame {
 
         // Left: App title
         navTitleLabel = new JLabel("Iron Ledger");
-        navTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        navTitleLabel.setFont(tm.getNavbarFont());
         navTitleLabel.setForeground(tm.getTextPrimary());
         navbar.add(navTitleLabel, BorderLayout.WEST);
 
@@ -166,7 +190,7 @@ public class MainFrame extends JFrame {
                 super.paintComponent(g);
             }
         };
-        themeToggleBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        themeToggleBtn.setFont(Typography.SMALL_BOLD);
         themeToggleBtn.setForeground(tm.getTextPrimary());
         themeToggleBtn.setFocusPainted(false);
         themeToggleBtn.setBorderPainted(false);
@@ -191,7 +215,7 @@ public class MainFrame extends JFrame {
             }
         };
         avatar.setForeground(Color.WHITE);
-        avatar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        avatar.setFont(Typography.BODY_BOLD);
         avatar.setPreferredSize(new Dimension(36, 36));
         rightPanel.add(avatar);
 
@@ -238,8 +262,14 @@ public class MainFrame extends JFrame {
 
     public void navigateTo(String route) {
         if (route == null) route = "dashboard";
+        String previousRoute = currentRoute;
 
         ensurePanelLoaded(route);
+
+        if (transitionOverlay.isVisible()) {
+            contentPanel.setVisible(true);
+            transitionOverlay.clear();
+        }
 
         // Reset workout panel when navigating away
         if ("workout".equals(currentRoute) && !"workout".equals(route) && workoutPanel != null) {
@@ -250,16 +280,33 @@ public class MainFrame extends JFrame {
         if ("history".equals(route) && historyPanel != null) historyPanel.loadWorkouts();
         if ("analytics".equals(route) && analyticsPanel != null) analyticsPanel.refresh();
 
-        currentRoute = route;
+        JPanel currentPanel = routePanels.get(previousRoute);
+        JPanel targetPanel = routePanels.get(route);
+        boolean animate = currentPanel != null
+            && targetPanel != null
+            && currentPanel != targetPanel
+            && contentPanel.getWidth() > 0
+            && contentPanel.getHeight() > 0
+            && isShowing();
+        BufferedImage fromImage = animate ? snapshotComponent(currentPanel) : null;
+
         cardLayout.show(contentPanel, route);
-
-        for (int i = 0; i < sidebarButtons.size() && i < routeKeys.length; i++) {
-            sidebarButtons.get(i).setActive(routeKeys[i].equals(route));
-        }
-
-        ThemeManager.getInstance().setLastScreen(route);
         contentPanel.revalidate();
         contentPanel.repaint();
+
+        BufferedImage toImage = animate ? snapshotComponent(targetPanel) : null;
+        currentRoute = route;
+
+        updateSidebarSelection(route);
+
+        ThemeManager.getInstance().setLastScreen(route);
+
+        if (animate && fromImage != null && toImage != null) {
+            contentPanel.setVisible(false);
+            transitionOverlay.start(fromImage, toImage, resolveDirection(previousRoute, route), () -> contentPanel.setVisible(true));
+        } else {
+            transitionOverlay.clear();
+        }
     }
 
     private void ensurePanelLoaded(String route) {
@@ -267,25 +314,25 @@ public class MainFrame extends JFrame {
             case "workout":
                 if (workoutPanel == null) {
                     workoutPanel = new WorkoutLoggerPanel();
-                    contentPanel.add(workoutPanel, "workout");
+                    registerRoutePanel("workout", workoutPanel);
                 }
                 break;
             case "history":
                 if (historyPanel == null) {
                     historyPanel = new WorkoutHistoryPanel();
-                    contentPanel.add(historyPanel, "history");
+                    registerRoutePanel("history", historyPanel);
                 }
                 break;
             case "analytics":
                 if (analyticsPanel == null) {
                     analyticsPanel = new AnalyticsPanel();
-                    contentPanel.add(analyticsPanel, "analytics");
+                    registerRoutePanel("analytics", analyticsPanel);
                 }
                 break;
             case "exercises":
                 if (exercisePanel == null) {
                     exercisePanel = new ExerciseLibraryPanel();
-                    contentPanel.add(exercisePanel, "exercises");
+                    registerRoutePanel("exercises", exercisePanel);
                 }
                 break;
         }
@@ -295,6 +342,9 @@ public class MainFrame extends JFrame {
 
     private void handleThemeChange() {
         ThemeManager tm = ThemeManager.getInstance();
+
+        contentPanel.setVisible(true);
+        transitionOverlay.clear();
 
         // Update navbar elements
         navTitleLabel.setForeground(tm.getTextPrimary());
@@ -309,12 +359,11 @@ public class MainFrame extends JFrame {
         // Recursively apply theme colors to ALL components
         tm.applyThemeToTree(contentPanel);
 
-        // Force full repaint of everything
         navbarPanel.repaint();
         sidebarPanel.repaint();
         contentPanel.revalidate();
         contentPanel.repaint();
-        repaint();
+        contentHost.repaint();
     }
 
     private String getUserName() {
@@ -329,5 +378,207 @@ public class MainFrame extends JFrame {
             System.err.println("[MAIN] Failed to get user name: " + e.getMessage());
         }
         return userName;
+    }
+
+    private void registerRoutePanel(String route, JPanel panel) {
+        JPanel previous = routePanels.put(route, panel);
+        if (previous != null) {
+            contentPanel.remove(previous);
+        }
+        contentPanel.add(panel, route);
+    }
+
+    private void updateSidebarSelection(String route) {
+        for (int i = 0; i < sidebarButtons.size() && i < routeKeys.length; i++) {
+            sidebarButtons.get(i).setActive(routeKeys[i].equals(route));
+        }
+    }
+
+    private int resolveDirection(String previousRoute, String targetRoute) {
+        int previousIndex = indexOfRoute(previousRoute);
+        int targetIndex = indexOfRoute(targetRoute);
+        if (previousIndex < 0 || targetIndex < 0) {
+            return 1;
+        }
+        return targetIndex >= previousIndex ? 1 : -1;
+    }
+
+    private int indexOfRoute(String route) {
+        if (route == null) {
+            return -1;
+        }
+        for (int i = 0; i < routeKeys.length; i++) {
+            if (routeKeys[i].equals(route)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private BufferedImage snapshotComponent(Component component) {
+        if (component == null || contentPanel.getWidth() <= 0 || contentPanel.getHeight() <= 0) {
+            return null;
+        }
+
+        component.setSize(contentPanel.getSize());
+        component.doLayout();
+
+        BufferedImage image = new BufferedImage(contentPanel.getWidth(), contentPanel.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = image.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        component.paint(g2);
+        g2.dispose();
+        return image;
+    }
+
+    private static class LoadingLabel extends JLabel {
+        private float pulseProgress = 0f;
+        private boolean directionForward = true;
+        private Animator pulseAnimator;
+
+        LoadingLabel(String text, Font font) {
+            super(text, SwingConstants.CENTER);
+            setFont(font);
+            setForeground(ThemeManager.getInstance().getTextMuted());
+        }
+
+        @Override
+        public void addNotify() {
+            super.addNotify();
+            startPulse();
+        }
+
+        @Override
+        public void removeNotify() {
+            if (pulseAnimator != null) {
+                pulseAnimator.stop();
+            }
+            super.removeNotify();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            ThemeManager tm = ThemeManager.getInstance();
+            setForeground(blend(tm.getTextMuted(), tm.getTextPrimary(), 0.35f + (pulseProgress * 0.25f)));
+            super.paintComponent(g);
+        }
+
+        private void startPulse() {
+            float start = pulseProgress;
+            float target = directionForward ? 1f : 0f;
+            if (pulseAnimator != null) {
+                pulseAnimator.stop();
+            }
+            pulseAnimator = new Animator(800, Animator.EASE_IN_OUT, eased -> {
+                pulseProgress = lerp(start, target, eased);
+                repaint(0, 0, getWidth(), getHeight());
+            }, () -> {
+                pulseProgress = target;
+                directionForward = !directionForward;
+                if (isDisplayable()) {
+                    startPulse();
+                }
+            });
+            pulseAnimator.start();
+        }
+    }
+
+    private final class TransitionOverlay extends JPanel {
+        private BufferedImage fromImage;
+        private BufferedImage toImage;
+        private float progress = 1f;
+        private int direction = 1;
+        private Animator animator;
+        private Runnable completionCallback;
+
+        TransitionOverlay() {
+            setOpaque(false);
+            setVisible(false);
+        }
+
+        void start(BufferedImage fromImage, BufferedImage toImage, int direction, Runnable completionCallback) {
+            clear();
+            this.fromImage = fromImage;
+            this.toImage = toImage;
+            this.direction = direction == 0 ? 1 : direction;
+            this.completionCallback = completionCallback;
+            this.progress = 0f;
+            setVisible(true);
+
+            animator = new Animator(210, Animator.EASE_OUT_CUBIC, eased -> {
+                progress = eased;
+                repaint(0, 0, getWidth(), getHeight());
+            }, this::finishTransition);
+            animator.start();
+        }
+
+        void clear() {
+            if (animator != null) {
+                animator.stop();
+                animator = null;
+            }
+            fromImage = null;
+            toImage = null;
+            progress = 1f;
+            completionCallback = null;
+            if (isVisible()) {
+                setVisible(false);
+                repaint(0, 0, getWidth(), getHeight());
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            if (fromImage == null || toImage == null) {
+                return;
+            }
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+            int slideDistance = Math.max(24, getWidth() / 12);
+            int outgoingX = Math.round(-direction * slideDistance * progress);
+            int incomingX = Math.round(direction * slideDistance * (1f - progress));
+
+            paintImage(g2, fromImage, outgoingX, 1f - progress);
+            paintImage(g2, toImage, incomingX, Math.min(1f, 0.15f + (progress * 0.85f)));
+            g2.dispose();
+        }
+
+        private void finishTransition() {
+            animator = null;
+            setVisible(false);
+            fromImage = null;
+            toImage = null;
+            repaint(0, 0, getWidth(), getHeight());
+
+            Runnable callback = completionCallback;
+            completionCallback = null;
+            if (callback != null) {
+                callback.run();
+            }
+        }
+
+        private void paintImage(Graphics2D g2, BufferedImage image, int x, float alpha) {
+            if (image == null || alpha <= 0f) {
+                return;
+            }
+            Graphics2D copy = (Graphics2D) g2.create();
+            copy.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, alpha))));
+            copy.drawImage(image, x, 0, null);
+            copy.dispose();
+        }
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    private static Color blend(Color a, Color b, float t) {
+        int red = Math.round(lerp(a.getRed(), b.getRed(), t));
+        int green = Math.round(lerp(a.getGreen(), b.getGreen(), t));
+        int blue = Math.round(lerp(a.getBlue(), b.getBlue(), t));
+        int alpha = Math.round(lerp(a.getAlpha(), b.getAlpha(), t));
+        return new Color(red, green, blue, alpha);
     }
 }

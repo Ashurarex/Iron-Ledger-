@@ -16,7 +16,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -27,6 +26,7 @@ import javax.swing.ListSelectionModel;
 import models.Exercise;
 import services.ExerciseService;
 import ui.components.CardPanel;
+import ui.components.MaterialComboBox;
 import ui.theme.ThemeManager;
 
 public class ExerciseLibraryPanel extends JPanel {
@@ -34,9 +34,9 @@ public class ExerciseLibraryPanel extends JPanel {
     private List<Exercise> allExercises;
     private List<Exercise> filteredExercises;
 
-    private JComboBox<String> muscleFilter;
-    private JComboBox<String> equipmentFilter;
-    private JComboBox<String> difficultyFilter;
+    private MaterialComboBox<String> muscleFilter;
+    private MaterialComboBox<String> equipmentFilter;
+    private MaterialComboBox<String> difficultyFilter;
     private JList<Exercise> exerciseList;
     private JTextArea detailsArea;
 
@@ -77,19 +77,19 @@ public class ExerciseLibraryPanel extends JPanel {
         g.gridx = 0; g.gridy = 0;
         filterCard.add(createLabel("Muscle"), g);
         g.gridx = 1; g.weightx = 1.0;
-        muscleFilter = new JComboBox<>(); muscleFilter.addItem("All");
+        muscleFilter = new MaterialComboBox<>(); muscleFilter.addItem("All");
         filterCard.add(muscleFilter, g);
 
         g.gridx = 2; g.weightx = 0;
         filterCard.add(createLabel("Equipment"), g);
         g.gridx = 3; g.weightx = 1.0;
-        equipmentFilter = new JComboBox<>(); equipmentFilter.addItem("All");
+        equipmentFilter = new MaterialComboBox<>(); equipmentFilter.addItem("All");
         filterCard.add(equipmentFilter, g);
 
         g.gridx = 4; g.weightx = 0;
         filterCard.add(createLabel("Difficulty"), g);
         g.gridx = 5; g.weightx = 1.0;
-        difficultyFilter = new JComboBox<>(); difficultyFilter.addItem("All");
+        difficultyFilter = new MaterialComboBox<>(); difficultyFilter.addItem("All");
         filterCard.add(difficultyFilter, g);
 
         muscleFilter.addActionListener(e -> applyFilters());
@@ -188,7 +188,7 @@ public class ExerciseLibraryPanel extends JPanel {
         detailsArea.setText("");
     }
 
-    private String getSelectedFilter(JComboBox<String> combo) {
+    private String getSelectedFilter(javax.swing.JComboBox<String> combo) {
         String val = (String) combo.getSelectedItem();
         return (val == null || val.equals("All")) ? null : val;
     }

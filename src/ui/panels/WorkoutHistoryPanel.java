@@ -1,5 +1,7 @@
 package ui.panels;
 
+import ui.animation.Animator;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -36,6 +38,9 @@ public class WorkoutHistoryPanel extends JPanel {
     private JLabel statusLabel;
     private Map<UUID, String> exerciseNameMap;
     private boolean exercisesLoaded = false;
+    private Animator statusAnimator;
+    private float statusPulse = 0f;
+    private boolean statusPulseForward = true;
 
     public WorkoutHistoryPanel() {
         this.workoutService = new WorkoutService();
@@ -151,7 +156,7 @@ public class WorkoutHistoryPanel extends JPanel {
     }
 
     public void loadWorkouts() {
-        statusLabel.setText("Loading...");
+        setStatus("Loading...", true);
         logsArea.setText("Loading history...");
 
         new SwingWorker<List<Workout>, Void>() {
@@ -168,16 +173,16 @@ public class WorkoutHistoryPanel extends JPanel {
                     workoutList.setListData(workouts.toArray(new Workout[0]));
 
                     if (workouts.isEmpty()) {
-                        statusLabel.setText("No workouts yet. Start one from the Workout tab!");
+                        setStatus("No workouts yet. Start one from the Workout tab!", false);
                         logsArea.setText("No workouts found.\n\nGo to 'Start Workout' to create your first session.");
                     } else {
-                        statusLabel.setText(workouts.size() + " workout(s) found");
+                        setStatus(workouts.size() + " workout(s) found", false);
                         logsArea.setText("Select a workout to view details.");
                     }
                     System.out.println("[HISTORY] Loaded workouts: " + workouts.size());
                 } catch (Exception ex) {
                     System.err.println("[HISTORY] Load failed: " + ex.getMessage());
-                    statusLabel.setText("Failed to load history");
+                    setStatus("Failed to load history", false);
                     logsArea.setText("Error loading workout history.\n\n" + ex.getMessage());
                 }
             }
@@ -239,5 +244,67 @@ public class WorkoutHistoryPanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    @Override
+    public void removeNotify() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        super.removeNotify();
+    }
+
+    private void setStatus(String text, boolean loading) {
+        statusLabel.setText(text);
+        if (loading) {
+            startStatusPulse();
+        } else {
+            stopStatusPulse();
+            statusLabel.setForeground(ThemeManager.getInstance().getTextMuted());
+        }
+    }
+
+    private void startStatusPulse() {
+        float start = statusPulse;
+        float target = statusPulseForward ? 1f : 0f;
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusAnimator = new Animator(760, Animator.EASE_IN_OUT, eased -> {
+            statusPulse = lerp(start, target, eased);
+            statusLabel.setForeground(blend(
+                ThemeManager.getInstance().getTextMuted(),
+                ThemeManager.getInstance().getTextPrimary(),
+                0.25f + (statusPulse * 0.35f)
+            ));
+            statusLabel.repaint();
+        }, () -> {
+            statusPulse = target;
+            statusPulseForward = !statusPulseForward;
+            if (isDisplayable() && statusLabel.getText().startsWith("Loading")) {
+                startStatusPulse();
+            }
+        });
+        statusAnimator.start();
+    }
+
+    private void stopStatusPulse() {
+        if (statusAnimator != null) {
+            statusAnimator.stop();
+        }
+        statusPulse = 0f;
+        statusPulseForward = true;
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    private static Color blend(Color a, Color b, float t) {
+        int red = Math.round(lerp(a.getRed(), b.getRed(), t));
+        int green = Math.round(lerp(a.getGreen(), b.getGreen(), t));
+        int blue = Math.round(lerp(a.getBlue(), b.getBlue(), t));
+        int alpha = Math.round(lerp(a.getAlpha(), b.getAlpha(), t));
+        return new Color(red, green, blue, alpha);
     }
 }

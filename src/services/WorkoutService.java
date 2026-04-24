@@ -16,6 +16,7 @@ public class WorkoutService {
     private final ExerciseRepository exerciseRepository;
     private final WorkoutLogRepository workoutLogRepository;
     private final SessionManager sessionManager;
+    private static List<models.Exercise> cachedExercises;
 
     public WorkoutService(
         WorkoutRepository workoutRepository,
@@ -154,7 +155,11 @@ public class WorkoutService {
         }
     }
 
-    public List<models.Exercise> getAllExercises() {
-        return exerciseRepository.getAllExercises();
+    public synchronized List<models.Exercise> getAllExercises() {
+        if (cachedExercises == null) {
+            cachedExercises = exerciseRepository.getAllExercises();
+            System.out.println("[DEBUG] Loaded exercises: " + cachedExercises.size());
+        }
+        return new ArrayList<>(cachedExercises);
     }
 }

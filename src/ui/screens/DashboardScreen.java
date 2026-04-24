@@ -1,8 +1,6 @@
 package ui.screens;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -14,6 +12,7 @@ import javax.swing.SwingConstants;
 import ui.components.CardPanel;
 import ui.components.PrimaryButton;
 import services.SessionManager;
+import ui.theme.ThemeManager;
 
 public class DashboardScreen extends JFrame {
     public DashboardScreen() {
@@ -22,12 +21,13 @@ public class DashboardScreen extends JFrame {
     }
 
     private void initialize() {
+        ThemeManager tm = ThemeManager.getInstance();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 700);
         setResizable(false);
         setLocationRelativeTo(null);
         
-        getContentPane().setBackground(new Color(245, 247, 250)); // #F5F7FA
+        getContentPane().setBackground(tm.getBackground());
         setLayout(new BorderLayout());
 
         String userName = "User";
@@ -37,8 +37,8 @@ public class DashboardScreen extends JFrame {
         }
         
         JLabel titleLabel = new JLabel("Welcome, " + userName, SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
-        titleLabel.setForeground(new Color(30, 30, 30));
+        titleLabel.setFont(tm.getHeaderFont());
+        titleLabel.setForeground(tm.getTextPrimary());
         titleLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 30, 0));
         add(titleLabel, BorderLayout.NORTH);
 
@@ -53,7 +53,6 @@ public class DashboardScreen extends JFrame {
         gbc.weightx = 1.0;
         
         PrimaryButton startWorkoutBtn = new PrimaryButton("Start Workout");
-        startWorkoutBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         startWorkoutBtn.addActionListener(e -> {
             if (SessionManager.getInstance().getCurrentUser() == null) {
                 javax.swing.JOptionPane.showMessageDialog(this, "You must be logged in to access workouts.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -63,7 +62,6 @@ public class DashboardScreen extends JFrame {
         });
 
         PrimaryButton viewHistoryBtn = new PrimaryButton("View History");
-        viewHistoryBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         viewHistoryBtn.addActionListener(e -> {
             if (SessionManager.getInstance().getCurrentUser() == null) {
                 javax.swing.JOptionPane.showMessageDialog(this, "You must be logged in to access workouts.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);

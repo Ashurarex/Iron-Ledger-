@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import repositories.UserRepository;
 import services.AuthService;
@@ -22,10 +23,14 @@ public class AppLauncher {
     }
 
     public void launch() {
-        DBConfig.validateRequiredVariables();
-        testDatabaseConnection();
-        initializeAuthentication();
-        showMainWindow();
+        try {
+            DBConfig.validateRequiredVariables();
+            testDatabaseConnection();
+            initializeAuthentication();
+            showMainWindow();
+        } catch (RuntimeException ex) {
+            showStartupError(ex.getMessage());
+        }
     }
 
     private void initializeAuthentication() {
@@ -61,6 +66,7 @@ public class AppLauncher {
             }
         } catch (SQLException ex) {
             System.err.println("[ERROR] Database connection failed: " + ex.getMessage());
+            throw new IllegalStateException("Database is not reachable. Check config.properties and your network connection.", ex);
         } catch (IllegalStateException ex) {
             System.err.println("[ERROR] Database configuration error: " + ex.getMessage());
             throw ex;
@@ -114,5 +120,14 @@ public class AppLauncher {
     private void showDashboard() {
         MainFrame mainFrame = new MainFrame();
         mainFrame.setVisible(true);
+    }
+
+    private void showStartupError(String message) {
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+            null,
+            message == null || message.isBlank() ? "Iron Ledger could not start." : message,
+            "Iron Ledger Startup Error",
+            JOptionPane.ERROR_MESSAGE
+        ));
     }
 }

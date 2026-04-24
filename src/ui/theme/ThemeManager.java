@@ -19,6 +19,8 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JViewport;
 
+import ui.components.MaterialComboBox;
+
 public class ThemeManager {
     public enum Theme { LIGHT, DARK }
 
@@ -96,21 +98,22 @@ public class ThemeManager {
     public Color getPreviewBg()         { return isDark() ? new Color(17, 24, 39)    : new Color(249, 250, 251); }
 
     // ── Fonts ───────────────────────────────────────────────────────────────
-    public Font getHeaderFont()   { return new Font("Segoe UI", Font.BOLD, 24);   }
-    public Font getTitleFont()    { return new Font("Segoe UI", Font.BOLD, 18);   }
-    public Font getLabelFont()    { return new Font("Segoe UI", Font.BOLD, 14);   }
-    public Font getBodyFont()     { return new Font("Segoe UI", Font.PLAIN, 14);  }
-    public Font getSmallFont()    { return new Font("Segoe UI", Font.PLAIN, 12);  }
-    public Font getButtonFont()   { return new Font("Segoe UI", Font.BOLD, 14);   }
-    public Font getSidebarFont()  { return new Font("Segoe UI", Font.PLAIN, 15);  }
-    public Font getNavbarFont()   { return new Font("Segoe UI", Font.BOLD, 16);   }
-    public Font getMonoFont()     { return new Font("Consolas", Font.PLAIN, 13);  }
+    public Font getHeaderFont()   { return Typography.H1;        }
+    public Font getTitleFont()    { return Typography.H2;        }
+    public Font getLabelFont()    { return Typography.BODY_BOLD; }
+    public Font getBodyFont()     { return Typography.BODY;      }
+    public Font getSmallFont()    { return Typography.SMALL;     }
+    public Font getButtonFont()   { return Typography.BODY_BOLD; }
+    public Font getSidebarFont()  { return Typography.BODY;      }
+    public Font getNavbarFont()   { return Typography.NAV;       }
+    public Font getMonoFont()     { return Typography.MONO;      }
 
     // ── Recursive Theme Application ─────────────────────────────────────────
 
     /** Recursively apply theme colors to a component tree. */
     public void applyThemeToTree(Component comp) {
         if (comp == null) return;
+        Typography.applyTypographyToComponent(comp);
 
         if (comp instanceof JLabel) {
             comp.setForeground(getTextPrimary());
@@ -123,7 +126,9 @@ public class ThemeManager {
             comp.setForeground(getInputText());
             ((JTextArea) comp).setCaretColor(getInputText());
         } else if (comp instanceof JComboBox) {
-            styleComboBox((JComboBox<?>) comp);
+            if (!(comp instanceof MaterialComboBox)) {
+                styleComboBox((JComboBox<?>) comp);
+            }
         } else if (comp instanceof JList) {
             comp.setBackground(getCardBg());
             comp.setForeground(getTextPrimary());
