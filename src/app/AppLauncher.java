@@ -10,7 +10,7 @@ import javax.swing.SwingUtilities;
 import repositories.UserRepository;
 import services.AuthService;
 import services.SessionManager;
-import ui.screens.DashboardScreen;
+import ui.MainFrame;
 import ui.screens.LoginScreen;
 import ui.screens.RegisterScreen;
 
@@ -112,7 +112,7 @@ public class AppLauncher {
     }
 
     private void showDashboard() {
-        DashboardScreen dashboardScreen = new DashboardScreen();
-        dashboardScreen.setVisible(true);
+        MainFrame mainFrame = new MainFrame();
+        mainFrame.setVisible(true);
     }
 }

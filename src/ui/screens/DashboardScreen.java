@@ -1,10 +1,19 @@
 package ui.screens;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import ui.components.CardPanel;
+import ui.components.PrimaryButton;
+import services.SessionManager;
 
 public class DashboardScreen extends JFrame {
     public DashboardScreen() {
@@ -17,39 +26,60 @@ public class DashboardScreen extends JFrame {
         setSize(1000, 700);
         setResizable(false);
         setLocationRelativeTo(null);
-        setLayout(new java.awt.BorderLayout());
+        
+        getContentPane().setBackground(new Color(245, 247, 250)); // #F5F7FA
+        setLayout(new BorderLayout());
 
-        JLabel titleLabel = new JLabel("Iron Ledger Dashboard", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-        titleLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(30, 0, 30, 0));
-        add(titleLabel, java.awt.BorderLayout.NORTH);
+        String userName = "User";
+        if (SessionManager.getInstance().getCurrentUser() != null) {
+            models.User user = SessionManager.getInstance().getCurrentUser();
+            userName = user.getFullName() != null && !user.getFullName().isEmpty() ? user.getFullName() : user.getEmail();
+        }
+        
+        JLabel titleLabel = new JLabel("Welcome, " + userName, SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        titleLabel.setForeground(new Color(30, 30, 30));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 30, 0));
+        add(titleLabel, BorderLayout.NORTH);
 
-        javax.swing.JPanel buttonPanel = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 20, 20));
-        buttonPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(150, 350, 150, 350));
-
-        javax.swing.JButton startWorkoutBtn = new javax.swing.JButton("Start Workout");
-        startWorkoutBtn.setFont(new Font("SansSerif", Font.BOLD, 18));
+        JPanel centerArea = new JPanel(new GridBagLayout());
+        centerArea.setOpaque(false);
+        
+        CardPanel cardPanel = new CardPanel(new GridBagLayout());
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 20, 15, 20);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        
+        PrimaryButton startWorkoutBtn = new PrimaryButton("Start Workout");
+        startWorkoutBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         startWorkoutBtn.addActionListener(e -> {
-            if (services.SessionManager.getInstance().getCurrentUser() == null) {
+            if (SessionManager.getInstance().getCurrentUser() == null) {
                 javax.swing.JOptionPane.showMessageDialog(this, "You must be logged in to access workouts.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
                 return;
             }
             new WorkoutLoggerScreen().setVisible(true);
         });
 
-        javax.swing.JButton viewHistoryBtn = new javax.swing.JButton("View History");
-        viewHistoryBtn.setFont(new Font("SansSerif", Font.BOLD, 18));
+        PrimaryButton viewHistoryBtn = new PrimaryButton("View History");
+        viewHistoryBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         viewHistoryBtn.addActionListener(e -> {
-            if (services.SessionManager.getInstance().getCurrentUser() == null) {
+            if (SessionManager.getInstance().getCurrentUser() == null) {
                 javax.swing.JOptionPane.showMessageDialog(this, "You must be logged in to access workouts.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
                 return;
             }
             new WorkoutHistoryScreen().setVisible(true);
         });
 
-        buttonPanel.add(startWorkoutBtn);
-        buttonPanel.add(viewHistoryBtn);
+        gbc.gridy = 0;
+        cardPanel.add(startWorkoutBtn, gbc);
+        
+        gbc.gridy = 1;
+        cardPanel.add(viewHistoryBtn, gbc);
 
-        add(buttonPanel, java.awt.BorderLayout.CENTER);
+        centerArea.add(cardPanel);
+        
+        add(centerArea, BorderLayout.CENTER);
     }
 }

@@ -40,7 +40,9 @@ public class WorkoutService {
     public Workout createWorkout(String name) {
         UUID userId = requireLoggedInUserId();
         String normalizedName = validateName(name);
-        return workoutRepository.createWorkout(userId, normalizedName);
+        Workout workout = workoutRepository.createWorkout(userId, normalizedName);
+        System.out.println("[SERVICE] Workout created -> id=" + workout.getId() + ", userId=" + userId + ", name=" + normalizedName);
+        return workout;
     }
 
     public WorkoutLog addLog(UUID workoutId, UUID exerciseId, int setNumber, int reps, double weight) {
@@ -62,7 +64,9 @@ public class WorkoutService {
         }
 
         ensureWorkoutBelongsToUser(workoutId, userId);
-        return workoutLogRepository.saveLog(workoutId, exerciseId, setNumber, reps, weight);
+        WorkoutLog log = workoutLogRepository.saveLog(workoutId, exerciseId, setNumber, reps, weight);
+        System.out.println("[SERVICE] Log saved -> logId=" + log.getId() + ", workoutId=" + workoutId + ", exerciseId=" + exerciseId);
+        return log;
     }
 
     public List<Workout> getWorkoutHistory() {
@@ -90,6 +94,7 @@ public class WorkoutService {
         }
 
         List<WorkoutLog> logs = workoutLogRepository.getLogsByWorkout(workoutId);
+        System.out.println("[SERVICE] Fetched details -> workoutId=" + workoutId + ", logs=" + logs.size());
         return new WorkoutDetails(workout, logs);
     }
 

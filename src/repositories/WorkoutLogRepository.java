@@ -15,11 +15,11 @@ public class WorkoutLogRepository {
     private static final String CREATE_WORKOUT_LOGS_TABLE_SQL = """
         CREATE TABLE IF NOT EXISTS workout_logs (
             id UUID PRIMARY KEY,
-            workout_id UUID NOT NULL,
-            exercise_id UUID NOT NULL,
-            set_number INTEGER NOT NULL,
-            reps INTEGER NOT NULL,
-            weight DOUBLE PRECISION NOT NULL
+            workout_id UUID NOT NULL REFERENCES workouts(id),
+            exercise_id UUID NOT NULL REFERENCES exercises(id),
+            set_number INTEGER NOT NULL CHECK (set_number >= 1),
+            reps INTEGER NOT NULL CHECK (reps > 0),
+            weight DOUBLE PRECISION NOT NULL CHECK (weight >= 0)
         )
         """;
 
